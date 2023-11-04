@@ -7,8 +7,8 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision.io import read_image
 from torchvision.transforms import ToTensor
 from utils.utils import cal_anchors, process_pointcloud, cal_rpn_target
+from utils.custom_collate import default_collate
 from aug_data import aug_data
-
 class CustomDataset(Dataset):
     def __init__(self, cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors=False):
         self.cfg = cfg
@@ -98,7 +98,7 @@ class CustomDataset(Dataset):
 
 def create_data_loader(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors=False):
     custom_dataset = CustomDataset(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors)
-    data_loader = DataLoader(custom_dataset, batch_size=params["batch_size"], shuffle=True if mode == "train" else False, num_workers=params["num_threads"])
+    data_loader = DataLoader(custom_dataset, batch_size=params["batch_size"], shuffle=True if mode == "train" else False, num_workers=params["num_threads"], collate_fn=default_collate)
     data_loader.num_examples = custom_dataset.num_examples
     return data_loader
 

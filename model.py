@@ -3,8 +3,18 @@ import torch.nn as nn
 from loss import ModelLoss
 import torch.optim as optim
 
+"""
+All TODO s on this page are fixes done when translating tensorflow code to pytorch. If training results aren't
+what we were expecting, these may be places to look.
+"""
 class VFE_Layer(nn.Module):
     def __init__(self, c_in, c_out, device):
+        """
+            A VFE layer class
+            Args:
+                c_in: int, the dimensions of the input
+                c_out : int, the dimension of the output after VFE, must be even
+        """
         super(VFE_Layer, self).__init__()
         self.device = device
         self.in_units = c_in
@@ -13,8 +23,16 @@ class VFE_Layer(nn.Module):
         self.bn = nn.BatchNorm2d(self.out_units).to(device)
 
     def forward(self, input, mask):
+        """
+        Forward method of the class
+        Args:
+            input : Tensor (4D tensor in our case), [Batch_size, max_num_voxels, max_num_pts, out_dim]
+            (out_dim = 7, at the beginning of the network)
+        Returns:
+            output : Tensor with the same shape as input, except the last dim which is c_out
+        """
         fcn_out = torch.relu(self.fcn(input.to(self.device)))
-        fcn_out = fcn_out.permute((0,3,2,1))
+        fcn_out = fcn_out.permute((0,3,2,1)) # TODO: This has to be done to keep dims right, find alternative/see if this is causing bugs
         fcn_out = self.bn(fcn_out)
         fcn_out = fcn_out.permute((0,3,2,1))
         max_pool = fcn_out.max(dim=2, keepdim=True)[0]
@@ -27,6 +45,14 @@ class VFE_Layer(nn.Module):
 
 class VFE_Block(nn.Module):
     def __init__(self, vfe_out_dims, final_dim, sparse_shape, device):
+        """
+            VFE_block class, made of VFE layers
+            
+            Args:
+            vfe_out_dims : n-integer list made of the output dimensions of VFEs, each dimension must be even
+            final_dim : int32, dimension of the last Dense layer after VFEs
+            sparse_shape : 3-list, int32, dimensions of the sparse voxels space // ex : [10, 400,352] 
+        """
         super(VFE_Block, self).__init__()
         self.device = device
         self.vfe_out_dims = vfe_out_dims
@@ -37,18 +63,34 @@ class VFE_Block(nn.Module):
         self.final_fcn = nn.Linear(vfe_out_dims[-1], final_dim)
 
     def forward(self, input, voxel_coor_buffer, shape, training=False):
+        """
+        Forward Method
+        Args:
+            input : 4D tensor, of type float32, [batch_size, K, T, 7]
+            voxel_coor_buffer : 2D tensor , int32 of dimension [batch_size, 4]
+            training : (optional), boolean 
+        Returns:
+            output : 5-D tensor, [batch_size, channels, Depth, Height, Width]
+        """
         mask = (input.max(dim=-1, keepdim=True)[0] != 0)
         vfe_out = input.to(self.device)
         for vfe in self.VFEs:
             vfe_out = vfe(vfe_out, mask).to(self.device)
         output = self.final_fcn(vfe_out).max(dim=2)[0] # [batch_size, max_num_voxels, final_dim]
         sparse_output = torch.zeros(shape, dtype=output.dtype, device=output.device) # [2, 10, 200, 240, 128]
+        # TODO: See if this effectively replaces tf.scatter as done here: https://github.com/gkadusumilli/Voxelnet/blob/d6865c8cc53bbc3150d8e1249afd65e4eb231142/model.py#L83
         sparse_output[:,voxel_coor_buffer[:,:,0],voxel_coor_buffer[:,:,1],voxel_coor_buffer[:,:,2],:] = output # [batch_size, Depth, Height, Width, channels]
         return sparse_output.permute(0, 4, 1, 2, 3) #[batch_size, channels, Depth, Height, Width]
 
 
 class ConvMiddleLayer(nn.Module):
+
     def __init__(self, out_shape, device):
+        """
+            Convolutional Middle Layer class
+            Args:
+            out_shape : 4-list, int32, dimensions of the output (batch_size, new_chnnles, height, widht)
+        """
         super(ConvMiddleLayer, self).__init__()
         self.device = device
         self.out_shape = out_shape
@@ -60,11 +102,15 @@ class ConvMiddleLayer(nn.Module):
         self.bn3 = nn.BatchNorm3d(64)
 
     def forward(self, input):
-        # out = torch.nn.functional.pad(input, (1, 1, 1, 1, 1, 1))
+        """
+        Forward Method
+        Args:
+            input : 5D Tensor, float32, shape=[batch_size, channels(128), Depth(10), Height(400), Width(352)]
+        returns:
+            4D tensor, float32, shape=(batch_size, new_chnnles, height, widht)
+        """
         out = torch.relu(self.bn1(self.conv1(input)))
-        # out = torch.nn.functional.pad(out, (1, 1, 1, 1, 1, 1))
         out = torch.relu(self.bn2(self.conv2(out)))
-        # out = torch.nn.functional.pad(out, (1, 1, 1, 1, 1, 1))
         out = torch.relu(self.bn3(self.conv3(out)))
         return out.reshape(*self.out_shape)
 
@@ -151,7 +197,7 @@ class RPN(nn.Module):
         reg_map = self.reg_map_conv(output)
         
         prob_map = torch.sigmoid(prob_map)
-        return prob_map.permute(0, 2, 3, 1), reg_map.permute(0, 2, 3, 1)
+        return prob_map.permute(0, 2, 3, 1), reg_map.permute(0, 2, 3, 1) # TODO: Determine if this permute is correct.
 
 class Model(nn.Module):
     def __init__(self, cfg, params, device):

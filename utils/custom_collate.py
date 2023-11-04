@@ -151,7 +151,7 @@ def collate(batch, *, collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]
 
 
 def collate_tensor_fn(batch, *, collate_fn_map: Optional[Dict[Union[Type, Tuple[Type, ...]], Callable]] = None):
-    batch = pad_sequence(batch, batch_first=True, padding_value=0)
+    batch = list(pad_sequence(batch, batch_first=True, padding_value=0))
     elem = batch[0]
     out = None
     if torch.utils.data.get_worker_info() is not None:

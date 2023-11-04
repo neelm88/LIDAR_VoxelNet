@@ -10,7 +10,6 @@ class ModelLoss(nn.Module):
         self.small_addon_for_BCE = params["small_addon_for_BCE"]
         self.alpha_bce = params["alpha_bce"]
         self.beta_bce = params["beta_bce"]
-        self.huber_delta = params["huber_delta"]
         self.smooth_l1 = nn.SmoothL1Loss(reduction='none')
         self.device = device
 

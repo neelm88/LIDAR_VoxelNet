@@ -18,22 +18,20 @@ import math
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")
+    # Modifying params here instad of in cli for easy access.
     params = {
         "n_epochs": 15,
-        "batch_size": 2,  # Set your batch size here
+        "batch_size": 2,  # Set to 2 for the fastest training. (Training time exponentially grows with batch size). Batch Size > 16 causes GPU memory issues for me.
         "small_addon_for_BCE": 1e-6,
-        "max_gradient_norm": 5,
+        "max_gradient_norm": 5, # TODO: See if I can make use of this.
         "alpha_bce": 1.5,
         "beta_bce": 1.0,
-        "huber_delta": 1.0,
-        "learning_rate": 0.001,  # Set your learning rate
+        "learning_rate": 0.001,
         "mode": "train",
-        "huber_delta": 3,
         "dump_vis": "no",
         "data_root_dir": "../",
         "model_dir": "model",
         "model_name": "model1",
-        "dump_test_interval": 40,
         "num_threads": 8
     }
     cfg["DATA_DIR"] = params["data_root_dir"]
@@ -58,14 +56,12 @@ def main():
     checkpoint_dir = os.path.join(params["model_dir"], params["model_name"], "checkpoints")
     os.makedirs(checkpoint_dir, exist_ok=True)
 
-    # ckpt = torch.load("path_to_your_checkpoint")  # Load your saved checkpoint if needed
-
     # Start training
     print("Start training : ")
     model.to(device)  # Move the model to the desired device (e.g., GPU)
     model.train()
-    total_data_points = len(train_batcher.dataset)  # Replace data_loader with your DataLoader
-    batch_size = train_batcher.batch_size  # Replace data_loader with your DataLoader
+    total_data_points = len(train_batcher.dataset)
+    batch_size = train_batcher.batch_size
 
     # Calculate the number of iterations
     num_iterations = math.ceil(total_data_points / batch_size)
@@ -99,7 +95,8 @@ def main():
             print(
                 f"train: {step + 1} @ epoch: {epoch + 1}/{params['n_epochs']} loss: {loss} time: {end_time-start_time} seconds" #  reg_loss: {reg_loss} cls_loss: {cls_loss} cls_pos_loss: {cls_pos_loss} cls_neg_loss: {cls_neg_loss}
             )
-
+            # TODO: Implement Validation
+            # TODO: Implement precision metric calculation
             if (step + 1) % num_iterations == 0:
                 # Save checkpoint
                 torch.save(
@@ -125,9 +122,6 @@ def main():
     plt.title('Loss Curve')
     plt.grid(True)
     plt.show()
-    plt.savefig("./x.png")
-    with open('data.pkl', 'wb') as file:
-        pickle.dump(losses, file)
 if __name__ == "__main__":
     main()
 
