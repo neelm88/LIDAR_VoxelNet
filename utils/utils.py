@@ -7,7 +7,7 @@ from numba import jit
 
 #from config import cfg
 from config import cfg
-from box_overlaps import *
+from .box_overlaps import *
 def process_pointcloud(point_cloud, cfg):
     # Input:
     #   (N, 4)
