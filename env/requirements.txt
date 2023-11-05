@@ -3,9 +3,9 @@ captum==0.5.0
 catalogue==1.0.2
 certifi==2023.7.22
 charset-normalizer==3.3.1
-contourpy @ file:///C:/b/abs_d5rpy288vc/croots/recipe/contourpy_1663827418189/work
+contourpy
 cPython==0.0.6
-cycler @ file:///tmp/build/80754af9/cycler_1637851556182/work
+cycler
 cymem==2.0.7
 Cython==3.0.4
 dill==0.3.6
@@ -19,36 +19,34 @@ fonttools==4.25.0
 fpdf==1.7.2
 fsspec==2023.10.0
 idna==3.4
-importlib-resources @ file:///C:/b/abs_9d6rmtszbl/croot/importlib_resources_1698254653090/work
-Jinja2==3.1.2
-joblib @ file:///C:/b/abs_1anqjntpan/croot/joblib_1685113317150/work
+importlib-resources
+joblib
 Keras-Applications==1.0.8
-kiwisolver @ file:///C:/b/abs_88mdhvtahm/croot/kiwisolver_1672387921783/work
-llvmlite @ file:///C:/b/abs_458aeunq7a/croot/llvmlite_1697031108211/work
+kiwisolver
+llvmlite
 MarkupSafe==2.1.3
-matplotlib @ file:///C:/b/abs_085jhivdha/croot/matplotlib-suite_1693812524572/work
-mlrose==1.3.0
+matplotlib
 mpmath==1.3.0
 munkres==1.1.4
 murmurhash==1.0.9
 networkx==3.2.1
 ntlm-auth==1.5.0
-numba @ file:///C:/b/abs_3cn3szuc98/croot/numba_1697057679468/work
-numpy @ file:///D:/bld/numpy_1653325517362/work
+numba
+numpy
 opencv-python==4.6.0.66
-packaging @ file:///C:/b/abs_28t5mcoltc/croot/packaging_1693575224052/work
+packaging
 pbr==5.11.1
-Pillow @ file:///C:/b/abs_20ztcm8lgk/croot/pillow_1696580089746/work
+Pillow
 plac==1.1.3
 platformdirs==3.1.1
 ply==3.11
 preshed==3.0.8
 pylatexenc==2.10
 pymongo==4.5.0
-pyparsing @ file:///C:/Users/BUILDE~1/AppData/Local/Temp/abs_7f_7lba6rl/croots/recipe/pyparsing_1661452540662/work
+pyparsing 
 PyQt5==5.15.7
-PyQt5-sip @ file:///C:/Windows/Temp/abs_d7gmd2jg8i/croots/recipe/pyqt-split_1659273064801/work/pyqt_sip
-python-dateutil @ file:///tmp/build/80754af9/python-dateutil_1626374649649/work
+PyQt5-sip 
+python-dateutil
 qiskit==0.43.2
 qiskit-aer==0.12.1
 qiskit-ibmq-provider==0.20.2
@@ -56,27 +54,26 @@ qiskit-terra==0.24.1
 requests==2.31.0
 requests-ntlm==1.1.0
 rustworkx==0.13.0
-scikit-learn @ file:///C:/b/abs_55olq_4gzc/croot/scikit-learn_1690978955123/work
-scipy @ file:///C:/bld/scipy_1658811088396/work
+scikit-learn 
+scipy 
 shapely==2.0.2
-sip @ file:///C:/Windows/Temp/abs_b8fxd17m2u/croots/recipe/sip_1659012372737/work
-six @ file:///tmp/build/80754af9/six_1644875935023/work
-sklearn==0.0.post1
+sip
+six
 spacy==2.3.5
 srsly==1.0.6
 stevedore==5.1.0
 sympy==1.12
 thinc==7.4.6
-threadpoolctl @ file:///Users/ktietz/demo/mc3/conda-bld/threadpoolctl_1629802263681/work
-toml @ file:///tmp/build/80754af9/toml_1616166611790/work
-torch==2.1.0+cu121
-torchaudio==2.1.0+cu121
+threadpoolctl
+toml
+torch==2.1.0
+torchaudio==2.1.0
 torchvision==0.16.0
-tornado @ file:///C:/b/abs_0cbrstidzg/croot/tornado_1696937003724/work
+tornado
 typing_extensions==4.8.0
 urllib3==2.0.7
 virtualenv==20.21.0
 wasabi==0.10.1
 websocket-client==1.6.1
 websockets==11.0.3
-zipp @ file:///C:/b/abs_b9jfdr908q/croot/zipp_1672387552360/work
+zipp
