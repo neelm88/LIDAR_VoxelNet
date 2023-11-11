@@ -208,7 +208,7 @@ class Model(nn.Module):
         self.vfe_block = VFE_Block(cfg.VFE_OUT_DIMS, cfg.VFE_FINAl_OUT_DIM, cfg.GRID_SIZE, device)
         self.convMiddle = ConvMiddleLayer((params["batch_size"], cfg.VFE_FINAl_OUT_DIM, *cfg.GRID_SIZE[1:]), device)
         self.rpn = RPN(cfg.NUM_ANCHORS_PER_CELL, device)
-        self.loss_object = ModelLoss(self.params, device)
+        self.loss_object = ModelLoss(self.params)
         boundaries = [80, 120]
         self.lr_cst = params["learning_rate"]
         self.optimizer = optim.Adam(self.parameters(), lr=params["learning_rate"])
@@ -227,10 +227,7 @@ class Model(nn.Module):
         p_map, r_map = self(feature_buffer, coordinate_buffer)
         loss, reg_loss, cls_loss, cls_pos_loss, cls_neg_loss = self.loss_object(r_map, p_map, targets, pos_equal_one, pos_equal_one_reg, pos_equal_one_sum, neg_equal_one, neg_equal_one_sum)
 
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-        return loss.item(), reg_loss.item(), cls_loss.item(), cls_pos_loss.item(), cls_neg_loss.item()
+        return loss, reg_loss, cls_loss, cls_pos_loss, cls_neg_loss
 
     def validate_step(self, feature_buffer, coordinate_buffer, targets, pos_equal_one, pos_equal_one_reg, pos_equal_one_sum, neg_equal_one, neg_equal_one_sum):
         p_map, r_map = self(feature_buffer, coordinate_buffer)

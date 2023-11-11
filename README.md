@@ -16,6 +16,10 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 If the above does not work, I placed my pip freeze in the env/requirements.txt file with python version 3.9.18
 
+It may be helpful to run the following command:
+```
+pip install lightning[extra]
+```
 Now, run the following:
 ```
 python setup.py build_ext --inplace
@@ -24,8 +28,22 @@ python setup.py build_ext --inplace
 To train the model run the following command
 python train.py
 
-Make sure the velodyne data is in the following location (or change params["data_root_dir"] accordingly):
+To see the tensorboard, run the following command (replace params accordingly):
+```
+tensorboard --logdir=params["model_dir"]/params["model_name"]/lightning_logs/
+```
+If you run into the following issue:
+```
+ValueError: Duplicate plugins for name projector
+```
+Run this:
+```
+pip uninstall tb-nightly tensorboardX tensorboard
+pip install tensorboard
+```
 
+Make sure the velodyne data is in the following location (or change params["data_root_dir"] accordingly):
+```
 └── DATA_DIR
        ├── training   <-- training data
        |   ├── image_2
@@ -36,6 +54,6 @@ Make sure the velodyne data is in the following location (or change params["data
        |   ├── label_2
        |   └── velodyne
        └── LIDAR_VoxelNet
-
+```
 To split the training and evaluation data, you can follow these steps: https://github.com/gkadusumilli/Voxelnet/blob/master/VoxelNet_data_creation.ipynb
 (Evaluation code has yet to be written.)

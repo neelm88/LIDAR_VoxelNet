@@ -17,3 +17,4 @@ dependencies:
     - shapely
     - easydict
     - Cython
+    - lightning[extra]

@@ -4,14 +4,13 @@ import torch.optim as optim
 
 class ModelLoss(nn.Module):
 
-    def __init__(self, params, device):
+    def __init__(self, params):
         super(ModelLoss, self).__init__()
         self.global_batch_size = params["batch_size"]
         self.small_addon_for_BCE = params["small_addon_for_BCE"]
         self.alpha_bce = params["alpha_bce"]
         self.beta_bce = params["beta_bce"]
         self.smooth_l1 = nn.SmoothL1Loss(reduction='none')
-        self.device = device
 
     def reg_loss_fn(self, reg_target, reg_pred, pos_equal_one_reg, pos_equal_one_sum):
         targ = reg_target * pos_equal_one_reg

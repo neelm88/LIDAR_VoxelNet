@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision.io import read_image
-from torchvision.transforms import ToTensor
+from torchvision import transforms
 from utils.utils import cal_anchors, process_pointcloud, cal_rpn_target
 from utils.custom_collate import default_collate
 from aug_data import aug_data
@@ -36,6 +36,11 @@ class CustomDataset(Dataset):
         if create_anchors:
             pass
         self.anchors = cal_anchors(cfg)
+        self.img_transform = transforms.Compose([
+                    transforms.ToPILImage(),
+                    transforms.Resize((self.cfg.IMG_HEIGHT,self.cfg.IMG_WIDTH)),
+                    transforms.ToTensor()
+                ])
 
     def __len__(self):
         return self.num_examples
@@ -75,7 +80,7 @@ class CustomDataset(Dataset):
                 dic["img"] = 0
             else:
                 img = read_image(os.path.join(img_dir, f"{int(index):06d}.png"))
-                dic["img"] = ToTensor()(img)
+                dic["img"] = self.img_transform(img)
 
             dic["tag"] = f"{int(index):06d}"
 
@@ -96,9 +101,9 @@ class CustomDataset(Dataset):
         dic.pop("labels")
         return dic
 
-def create_data_loader(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors=False):
+def create_data_loader(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors=False, persistent_workers=False):
     custom_dataset = CustomDataset(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors)
-    data_loader = DataLoader(custom_dataset, batch_size=params["batch_size"], shuffle=True if mode == "train" else False, num_workers=params["num_threads"], collate_fn=default_collate)
+    data_loader = DataLoader(custom_dataset, batch_size=params["batch_size"], shuffle=True if mode == "train" else False, num_workers=params["num_threads"], collate_fn=default_collate, persistent_workers=persistent_workers)
     data_loader.num_examples = custom_dataset.num_examples
     return data_loader
 
