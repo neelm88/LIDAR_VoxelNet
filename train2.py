@@ -6,13 +6,11 @@ from model import Model
 from config import cfg
 from sklearn.preprocessing import LabelEncoder
 
-from metrics import MeanAveragePrecision
 
 class VoxelNetPL(pl.LightningModule):
     def __init__(self, model: torch.nn.Module):
         super().__init__()
         self.model = model
-        self.metrics = {"Mean Average Precision": MeanAveragePrecision()}
 
     def training_step(self, data, step):
         feature_buffer      = data["feature_buffer"]
@@ -42,6 +40,7 @@ class VoxelNetPL(pl.LightningModule):
         for m in self.metrics.values():
             m.update(preds, tgts)
         '''
+        self.log("training_loss", loss, batch_size=self.model.params["batch_size"])
         return loss
 
     def validation_step(self, data, step):
@@ -57,6 +56,7 @@ class VoxelNetPL(pl.LightningModule):
         p_map, r_map = self.model(feature_buffer, coordinate_buffer)
         loss, reg_loss, cls_loss, cls_pos_loss, cls_neg_loss = self.model.loss_object(
             r_map, p_map, targets, pos_equal_one, pos_equal_one_reg, pos_equal_one_sum, neg_equal_one, neg_equal_one_sum)
+        self.log("validation_loss", loss, batch_size=self.model.params["batch_size"])
        # breakpoint()
         return loss
 
@@ -79,7 +79,7 @@ def train_experiment_debug():
         "learning_rate": 0.001,
         "mode":         "train",
         "dump_vis":     "no",
-        "data_root_dir": "/mnt/d/Datasets/Kitti",
+        "data_root_dir": "../",
         "model_dir":    "model",
         "model_name":   "model1",
         "num_threads":  8
@@ -93,8 +93,8 @@ def train_experiment_debug():
 
     model = Model(cfg, params, device)
     model = VoxelNetPL(model)
-
-    trainer = pl.Trainer(max_steps=3, max_epochs=1)
+    checkpoint_dir = os.path.join("./", params["model_dir"], params["model_name"])
+    trainer = pl.Trainer(max_epochs=params["n_epochs"], default_root_dir=checkpoint_dir)
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     
 

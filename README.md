@@ -39,3 +39,22 @@ Make sure the velodyne data is in the following location (or change params["data
 
 To split the training and evaluation data, you can follow these steps: https://github.com/gkadusumilli/Voxelnet/blob/master/VoxelNet_data_creation.ipynb
 (Evaluation code has yet to be written.)
+
+Tensorboard:
+It may be helpful to run the following command:
+```
+pip install lightning[extra]
+```
+To see the tensorboard, run the following command (replace params accordingly):
+```
+tensorboard --logdir=params["model_dir"]/params["model_name"]/lightning_logs/
+```
+
+If you run into the following issue:
+
+ValueError: Duplicate plugins for name projector
+Run this:
+```
+pip uninstall tb-nightly tensorboardX tensorboard
+pip install tensorboard
+```
