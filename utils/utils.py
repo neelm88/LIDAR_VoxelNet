@@ -27,12 +27,9 @@ def process_pointcloud(point_cloud, cfg):
     voxel_index = np.floor(
         shifted_coord[:, ::-1] / voxel_size).astype(np.int64)
 
-    bound_x = np.logical_and(
-        voxel_index[:, 2] >= 0, voxel_index[:, 2] < grid_size[2])
-    bound_y = np.logical_and(
-        voxel_index[:, 1] >= 0, voxel_index[:, 1] < grid_size[1])
-    bound_z = np.logical_and(
-        voxel_index[:, 0] >= 0, voxel_index[:, 0] < grid_size[0])
+    bound_x = np.logical_and(voxel_index[:, 2] >= 0, voxel_index[:, 2] < grid_size[2])
+    bound_y = np.logical_and(voxel_index[:, 1] >= 0, voxel_index[:, 1] < grid_size[1])
+    bound_z = np.logical_and(voxel_index[:, 0] >= 0, voxel_index[:, 0] < grid_size[0])
 
     bound_box = np.logical_and(np.logical_and(bound_x, bound_y), bound_z)
 
@@ -63,8 +60,7 @@ def process_pointcloud(point_cloud, cfg):
             feature_buffer[index, number, :4] = point
             number_buffer[index] += 1
 
-    feature_buffer[:, :, -3:] = feature_buffer[:, :, :3] - \
-        feature_buffer[:, :, :3].sum(axis=1, keepdims=True)/number_buffer.reshape(K, 1, 1)
+    feature_buffer[:, :, -3:] = feature_buffer[:, :, :3] - feature_buffer[:, :, :3].sum(axis=1, keepdims=True)/number_buffer.reshape(K, 1, 1)
 
     voxel_dict = {'feature_buffer': feature_buffer,
                   'coordinate_buffer': coordinate_buffer,
