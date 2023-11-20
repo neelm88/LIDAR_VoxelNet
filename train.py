@@ -54,7 +54,7 @@ class VoxelNetPL(pl.LightningModule):
         coordinate_buffer   = data["coordinate_buffer"]
         p_map, r_map        = self.model(feature_buffer, coordinate_buffer)
         p_map = p_map.reshape(p_map.shape[0], -1, 1 * self.model.nclasses)
-        r_map = r_map.reshape(r_map.shape[0], -1, 7 * self.model.nclasses)
+        r_map = delta_to_boxes3d(r_map)
         return r_map[p_map.tile(7) > cfg.RPN_POS_IOU]
 
     def configure_optimizers(self):
