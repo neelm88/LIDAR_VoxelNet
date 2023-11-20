@@ -93,15 +93,14 @@ class KittiDataset(Dataset):
             dic["pos_equal_one"], dic["neg_equal_one"], dic["targets"] = 0, 0, 0
             dic["pos_equal_one_reg"], dic["pos_equal_one_sum"], dic["neg_equal_one_sum"] = 0, 0, 0
         dic["labels"] = self.label_encoder.fit_transform(dic["labels"])
-        dic.pop("labels")
         return dic
 
-def create_data_loader(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors=False):
+def create_data_loader(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors=False, seed=2023):
     train_dataset = KittiDataset(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors)
     
     from torch.utils.data import random_split
     train_split = 0.8
-    train_dataset, val_dataset = random_split(train_dataset, [train_split, 1.0 - train_split])
+    train_dataset, val_dataset = random_split(train_dataset, [train_split, 1.0 - train_split], generator=torch.Generator().manual_seed(seed))
     train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], shuffle=True, num_workers=params["num_threads"], collate_fn=default_collate)
     val_loader   = DataLoader(val_dataset, batch_size=params["batch_size"], shuffle=False, num_workers=params["num_threads"], collate_fn=default_collate)
     return train_loader, val_loader

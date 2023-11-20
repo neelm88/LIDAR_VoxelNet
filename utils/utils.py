@@ -5,9 +5,12 @@ import shapely.affinity
 import math
 from numba import jit
 
-#from config import cfg
+import torch
 from config import cfg
 from .box_overlaps import *
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 def process_pointcloud(point_cloud, cfg):
     # Input:
     #   (N, 4)
@@ -607,8 +610,8 @@ def cal_anchors(cfg):
     y = np.linspace(cfg.Y_MIN, cfg.Y_MAX, cfg.FEATURE_HEIGHT)
     cx, cy = np.meshgrid(x, y)
     # all is (w, l, 2)
-    cx = np.tile(cx[..., np.newaxis], 2)
-    cy = np.tile(cy[..., np.newaxis], 2)
+    cx = np.tile(cx[..., np.newaxis], (2,))
+    cy = np.tile(cy[..., np.newaxis], (2,))
     cz = np.ones_like(cx) * cfg.ANCHOR_Z
     w = np.ones_like(cx) * cfg.ANCHOR_W
     l = np.ones_like(cx) * cfg.ANCHOR_L
@@ -618,7 +621,7 @@ def cal_anchors(cfg):
     r[..., 1] = 90 / 180 * np.pi  # 90
 
     # 7*(w,l,2) -> (w, l, 2, 7)
-    anchors = np.stack([cx, cy, cz, h, w, l, r], axis=-1)
+    anchors = np.stack([cx, cy, cz, h, w, l, r], axis = -1)
 
     return anchors
 
@@ -660,49 +663,39 @@ def cal_rpn_target(labels, feature_map_shape, anchors, cls='Car', coordinate='li
         # )
 
         # find anchor with highest iou(iou should also > 0)
-        id_highest = np.argmax(iou.T, axis=1)
-        id_highest_gt = np.arange(iou.T.shape[0])
-        mask = iou.T[id_highest_gt, id_highest] > 0
-        id_highest, id_highest_gt = id_highest[mask], id_highest_gt[mask]
+        id_highest                  = np.argmax(iou.T, axis=1)
+        id_highest_gt               = np.arange(iou.T.shape[0])
+        mask                        = iou.T[id_highest_gt, id_highest] > 0
+        id_highest, id_highest_gt   = id_highest[mask], id_highest_gt[mask]
 
         # find anchor iou > cfg.XXX_POS_IOU
         id_pos, id_pos_gt = np.where(iou > cfg.RPN_POS_IOU)
 
         # find anchor iou < cfg.XXX_NEG_IOU
-        id_neg = np.where(np.sum(iou < cfg.RPN_NEG_IOU,
-                                 axis=1) == iou.shape[1])[0]
+        id_neg      = np.where(np.sum(iou < cfg.RPN_NEG_IOU, axis=1) == iou.shape[1])[0]
 
-        id_pos = np.concatenate([id_pos, id_highest])
-        id_pos_gt = np.concatenate([id_pos_gt, id_highest_gt])
+        id_pos      = np.concatenate([id_pos, id_highest])
+        id_pos_gt   = np.concatenate([id_pos_gt, id_highest_gt])
 
         # TODO: uniquify the array in a more scientific way
-        id_pos, index = np.unique(id_pos, return_index=True)
-        id_pos_gt = id_pos_gt[index]
+        id_pos, index   = np.unique(id_pos, return_index=True)
+        id_pos_gt       = id_pos_gt[index]
         id_neg.sort()
 
         # cal the target and set the equal one
-        index_x, index_y, index_z = np.unravel_index(
-            id_pos, (*feature_map_shape, 2))
+        index_x, index_y, index_z = np.unravel_index(id_pos, (*feature_map_shape, 2))
         pos_equal_one[batch_id, index_x, index_y, index_z] = 1
 
         # ATTENTION: index_z should be np.array
-        targets[batch_id, index_x, index_y, np.array(index_z) * 7] = (
-            batch_gt_boxes3d[batch_id][id_pos_gt, 0] - anchors_reshaped[id_pos, 0]) / anchors_d[id_pos]
-        targets[batch_id, index_x, index_y, np.array(index_z) * 7 + 1] = (
-            batch_gt_boxes3d[batch_id][id_pos_gt, 1] - anchors_reshaped[id_pos, 1]) / anchors_d[id_pos]
-        targets[batch_id, index_x, index_y, np.array(index_z) * 7 + 2] = (
-            batch_gt_boxes3d[batch_id][id_pos_gt, 2] - anchors_reshaped[id_pos, 2]) / cfg.ANCHOR_H
-        targets[batch_id, index_x, index_y, np.array(index_z) * 7 + 3] = np.log(
-            batch_gt_boxes3d[batch_id][id_pos_gt, 3] / anchors_reshaped[id_pos, 3])
-        targets[batch_id, index_x, index_y, np.array(index_z) * 7 + 4] = np.log(
-            batch_gt_boxes3d[batch_id][id_pos_gt, 4] / anchors_reshaped[id_pos, 4])
-        targets[batch_id, index_x, index_y, np.array(index_z) * 7 + 5] = np.log(
-            batch_gt_boxes3d[batch_id][id_pos_gt, 5] / anchors_reshaped[id_pos, 5])
-        targets[batch_id, index_x, index_y, np.array(index_z) * 7 + 6] = (
-            batch_gt_boxes3d[batch_id][id_pos_gt, 6] - anchors_reshaped[id_pos, 6])
+        targets[batch_id, index_x, index_y, np.array(index_z) * 7]     =       (batch_gt_boxes3d[batch_id][id_pos_gt, 0] - anchors_reshaped[id_pos, 0]) / anchors_d[id_pos]
+        targets[batch_id, index_x, index_y, np.array(index_z) * 7 + 1] =       (batch_gt_boxes3d[batch_id][id_pos_gt, 1] - anchors_reshaped[id_pos, 1]) / anchors_d[id_pos]
+        targets[batch_id, index_x, index_y, np.array(index_z) * 7 + 2] =       (batch_gt_boxes3d[batch_id][id_pos_gt, 2] - anchors_reshaped[id_pos, 2]) / cfg.ANCHOR_H
+        targets[batch_id, index_x, index_y, np.array(index_z) * 7 + 3] = np.log(batch_gt_boxes3d[batch_id][id_pos_gt, 3] / anchors_reshaped[id_pos, 3])
+        targets[batch_id, index_x, index_y, np.array(index_z) * 7 + 4] = np.log(batch_gt_boxes3d[batch_id][id_pos_gt, 4] / anchors_reshaped[id_pos, 4])
+        targets[batch_id, index_x, index_y, np.array(index_z) * 7 + 5] = np.log(batch_gt_boxes3d[batch_id][id_pos_gt, 5] / anchors_reshaped[id_pos, 5])
+        targets[batch_id, index_x, index_y, np.array(index_z) * 7 + 6] =       (batch_gt_boxes3d[batch_id][id_pos_gt, 6] - anchors_reshaped[id_pos, 6])
 
-        index_x, index_y, index_z = np.unravel_index(
-            id_neg, (*feature_map_shape, 2))
+        index_x, index_y, index_z = np.unravel_index(id_neg, (*feature_map_shape, 2))
         neg_equal_one[batch_id, index_x, index_y, index_z] = 1
         # to avoid a box be pos/neg in the same time
         index_x, index_y, index_z = np.unravel_index(
@@ -711,27 +704,25 @@ def cal_rpn_target(labels, feature_map_shape, anchors, cls='Car', coordinate='li
 
     return pos_equal_one, neg_equal_one, targets
 
-
 # BOTTLENECK
-def delta_to_boxes3d(deltas, anchors, coordinate='lidar'):
+ANCHORS      = cal_anchors(cfg)
+ANCHORS_CUDA = torch.Tensor(ANCHORS).to(device)
+def delta_to_boxes3d(deltas: torch.Tensor, anchors: torch.Tensor = ANCHORS_CUDA):
     # Input:
     #   deltas: (N, w, l, 14)
     #   feature_map_shape: (w, l)
     #   anchors: (w, l, 2, 7)
 
     # Ouput:
-    #   boxes3d: (N, w*l*2, 7)
-    anchors_reshaped = anchors.reshape(-1, 7)
-    deltas = deltas.reshape(deltas.shape[0], -1, 7)
-    anchors_d = np.sqrt(anchors_reshaped[:, 4]**2 + anchors_reshaped[:, 5]**2)
-    boxes3d = np.zeros_like(deltas)
-    boxes3d[..., [0, 1]] = deltas[..., [0, 1]] * \
-        anchors_d[:, np.newaxis] + anchors_reshaped[..., [0, 1]]
-    boxes3d[..., [2]] = deltas[..., [2]] * \
-        cfg.ANCHOR_H + anchors_reshaped[..., [2]]
-    boxes3d[..., [3, 4, 5]] = np.exp(
-        deltas[..., [3, 4, 5]]) * anchors_reshaped[..., [3, 4, 5]]
-    boxes3d[..., 6] = deltas[..., 6] + anchors_reshaped[..., 6]
+    #   boxes3d: (N, w*l*2, 7) 
+    anchors_reshaped        = anchors.to(device).reshape(-1, 7)
+    deltas                  = deltas.reshape(deltas.shape[0], -1, 7)
+    anchors_d               = torch.sqrt(anchors_reshaped[:, 4]**2 + anchors_reshaped[:, 5]**2)
+    boxes3d                 = torch.zeros_like(deltas)
+    boxes3d[..., [0, 1]]    =           deltas[..., [0, 1]]     * anchors_d[:, np.newaxis] + anchors_reshaped[..., [0, 1]]
+    boxes3d[..., [2]]       =           deltas[..., [2]]        * cfg.ANCHOR_H             + anchors_reshaped[..., [2]]
+    boxes3d[..., [3, 4, 5]] = torch.exp(deltas[..., [3, 4, 5]]) * anchors_reshaped[..., [3, 4, 5]]
+    boxes3d[..., 6]         =           deltas[..., 6]                                     + anchors_reshaped[..., 6]
 
     return boxes3d
 

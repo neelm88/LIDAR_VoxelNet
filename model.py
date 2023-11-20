@@ -192,6 +192,7 @@ class Model(nn.Module):
         self.device = device
         self.params = params
         self.cfg = cfg
+        self.nclasses = 1 if type(cfg.DETECT_OBJECT) == str else len(cfg.DETECT_OBJECT)
         self.vfe_block = VFE_Block(cfg.VFE_OUT_DIMS, cfg.VFE_FINAl_OUT_DIM, cfg.GRID_SIZE, device)
         self.convMiddle = ConvMiddleLayer((params["batch_size"], cfg.VFE_FINAl_OUT_DIM, *cfg.GRID_SIZE[1:]), device)
         self.rpn = RPN(cfg.NUM_ANCHORS_PER_CELL, device)
