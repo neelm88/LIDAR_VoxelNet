@@ -9,7 +9,7 @@ from torchvision.transforms import ToTensor
 from utils.utils import cal_anchors, process_pointcloud, cal_rpn_target
 from utils.custom_collate import default_collate
 from aug_data import aug_data
-class CustomDataset(Dataset):
+class KittiDataset(Dataset):
     def __init__(self, cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors=False):
         self.cfg = cfg
         self.params = params
@@ -93,14 +93,17 @@ class CustomDataset(Dataset):
             dic["pos_equal_one"], dic["neg_equal_one"], dic["targets"] = 0, 0, 0
             dic["pos_equal_one_reg"], dic["pos_equal_one_sum"], dic["neg_equal_one_sum"] = 0, 0, 0
         dic["labels"] = self.label_encoder.fit_transform(dic["labels"])
-        dic.pop("labels")
         return dic
 
-def create_data_loader(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors=False):
-    custom_dataset = CustomDataset(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors)
-    data_loader = DataLoader(custom_dataset, batch_size=params["batch_size"], shuffle=True if mode == "train" else False, num_workers=params["num_threads"], collate_fn=default_collate)
-    data_loader.num_examples = custom_dataset.num_examples
-    return data_loader
+def create_data_loader(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors=False, seed=2023):
+    train_dataset = KittiDataset(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors)
+    
+    from torch.utils.data import random_split
+    train_split = 0.8
+    train_dataset, val_dataset = random_split(train_dataset, [train_split, 1.0 - train_split], generator=torch.Generator().manual_seed(seed))
+    train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], shuffle=True, num_workers=params["num_threads"], collate_fn=default_collate)
+    val_loader   = DataLoader(val_dataset, batch_size=params["batch_size"], shuffle=False, num_workers=params["num_threads"], collate_fn=default_collate)
+    return train_loader, val_loader
 
 # Usage:
 # data_loader = create_data_loader(cfg, params, buffer_size, mode, is_aug_data)
