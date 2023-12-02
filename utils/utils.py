@@ -622,9 +622,29 @@ def cal_anchors(cfg):
 
     # 7*(w,l,2) -> (w, l, 2, 7)
     anchors = np.stack([cx, cy, cz, h, w, l, r], axis = -1)
-
     return anchors
 
+def cal_anchors_hardcoded():
+    # Output:
+    #   anchors: (w, l, 2, 7) x y z h w l r
+    with torch.no_grad():
+        x = torch.linspace(0, 48, 120)
+        y = torch.linspace(-20, 20, 100)
+        cx, cy = torch.meshgrid(x, y)
+        # all is (w, l, 2)
+        cx = torch.tile(cx.unsqueeze(-1), (2,))
+        cy = torch.tile(cy.unsqueeze(-1), (2,))
+        cz = torch.ones_like(cx) * -1.4649999999999999
+        w = torch.ones_like(cx) * 0.6
+        l = torch.ones_like(cx) * 0.8
+        h = torch.ones_like(cx) * 1.73
+        r = torch.ones_like(cx)
+        r[..., 0] = 0  # 0
+        r[..., 1] = 90 / 180 * torch.pi  # 90
+
+        # 7*(w,l,2) -> (w, l, 2, 7)
+        anchors = torch.stack([cx, cy, cz, h, w, l, r], axis = -1)
+    return anchors
 
 def cal_rpn_target(labels, feature_map_shape, anchors, cls='Car', coordinate='lidar'):
     # Input:
@@ -726,6 +746,24 @@ def delta_to_boxes3d(deltas: torch.Tensor, anchors: torch.Tensor = ANCHORS_CUDA)
 
     return boxes3d
 
+def delta_to_boxes3d_hardcoded(deltas: torch.Tensor, anchors: torch.Tensor = ANCHORS_CUDA):
+    # Input:
+    #   deltas: (N, w, l, 14)
+    #   feature_map_shape: (w, l)
+    #   anchors: (w, l, 2, 7)
+
+    # Ouput:
+    #   boxes3d: (N, w*l*2, 7) 
+    anchors_reshaped        = anchors.reshape(-1, 7)
+    deltas                  = deltas.reshape(deltas.shape[0], -1, 7)
+    anchors_d               = torch.sqrt(anchors_reshaped[:, 4]**2 + anchors_reshaped[:, 5]**2).to(device)
+    boxes3d                 = torch.zeros_like(deltas).to(device)
+    boxes3d[..., [0, 1]]    =           deltas[..., [0, 1]]     * anchors_d.unsqueeze(-1) + anchors_reshaped[..., [0, 1]]
+    boxes3d[..., [2]]       =           deltas[..., [2]]        * cfg.ANCHOR_H             + anchors_reshaped[..., [2]]
+    boxes3d[..., [3, 4, 5]] = torch.exp(deltas[..., [3, 4, 5]]) * anchors_reshaped[..., [3, 4, 5]]
+    boxes3d[..., 6]         =           deltas[..., 6]                                     + anchors_reshaped[..., 6]
+
+    return boxes3d
 
 def point_transform(points, tx, ty, tz, rx=0, ry=0, rz=0):
     # Input:
