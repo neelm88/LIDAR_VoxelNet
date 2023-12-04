@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision.io import read_image
-from torchvision.transforms import ToTensor
+from torchvision import transforms
 from utils.utils import cal_anchors, process_pointcloud, cal_rpn_target, load_kitti_calib
 from utils.custom_collate import default_collate
 from aug_data import aug_data
@@ -17,6 +17,11 @@ class KittiDataset(Dataset):
         self.buffer_size = buffer_size
         self.is_aug_data = is_aug_data
         self.label_encoder = label_encoder
+        self.img_transform = transforms.Compose([
+                    transforms.ToPILImage(),
+                    transforms.Resize((self.cfg.IMG_HEIGHT,self.cfg.IMG_WIDTH)),
+                    transforms.ToTensor()
+                ])
         data_d = "training" if mode == "train" else "testing" if mode == "test" else "validation"
 
         if mode != "test":
@@ -58,6 +63,7 @@ class KittiDataset(Dataset):
 
         if self.is_aug_data:
             dic = aug_data(index, os.path.join(self.cfg.DATA_DIR, data_d))
+            dic["tag"] = f"{int(index):06d}"
         else:
             pc = np.fromfile(os.path.join(pc_dir, f"{int(index):06d}.bin"), dtype=np.float32).reshape(-1, 4)
             if self.mode == "test":
@@ -75,9 +81,8 @@ class KittiDataset(Dataset):
                 dic["img"] = 0
             else:
                 img = read_image(os.path.join(img_dir, f"{int(index):06d}.png"))
-                dic["img"] = ToTensor()(img)
-                calib_dir = os.path.join(self.cfg.DATA_DIR, data_d, "calib")
-                dic["calib"] = load_kitti_calib(os.path.join(calib_dir, f"{int(index):06d}.txt"))
+                dic["img"] = self.img_transform(img)
+
 
             dic["tag"] = f"{int(index):06d}"
 
@@ -95,6 +100,10 @@ class KittiDataset(Dataset):
             dic["pos_equal_one"], dic["neg_equal_one"], dic["targets"] = 0, 0, 0
             dic["pos_equal_one_reg"], dic["pos_equal_one_sum"], dic["neg_equal_one_sum"] = 0, 0, 0
         dic["labels"] = self.label_encoder.fit_transform(dic["labels"])
+        calib_dir = os.path.join(self.cfg.DATA_DIR, data_d, "calib")
+        dic["calib"] = load_kitti_calib(os.path.join(calib_dir, f"{int(index):06d}.txt"))
+        img = read_image(os.path.join(img_dir, f"{int(index):06d}.png"))
+        dic["img"] = self.img_transform(img)
         return dic
 
 def create_data_loader(cfg, params, buffer_size, mode, is_aug_data, label_encoder, create_anchors=False, seed=2023):

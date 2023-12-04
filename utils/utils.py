@@ -915,12 +915,10 @@ def box3d_center_to_corner_batch(boxes_center):
     # (N, 7) -> (N, 8, 3)
     N = boxes_center.shape[0]
     ret = torch.zeros((N, 8, 3))
-    if boxes_center.is_cuda:
-        ret = ret.cuda()
 
     for i in range(N):
         box = boxes_center[i]
-        translation = box[0:3]
+        translation = box[0:3].reshape(3, 1)
         size = box[3:6]
         rotation = [0, 0, box[-1]]
 
@@ -929,18 +927,15 @@ def box3d_center_to_corner_batch(boxes_center):
             [-l / 2, -l / 2, l / 2, l / 2, -l / 2, -l / 2, l / 2, l / 2], \
             [w / 2, -w / 2, -w / 2, w / 2, w / 2, -w / 2, -w / 2, w / 2], \
             [0, 0, 0, 0, h, h, h, h]])
-        if boxes_center.is_cuda:
-            trackletBox = trackletBox.cuda()
         # re-create 3D bounding box in velodyne coordinate system
         yaw = rotation[2]
         rotMat = torch.FloatTensor([
             [np.cos(yaw), -np.sin(yaw), 0.0],
             [np.sin(yaw), np.cos(yaw), 0.0],
             [0.0, 0.0, 1.0]])
-        if boxes_center.is_cuda:
-            rotMat = rotMat.cuda()
 
-        cornerPosInVelo = torch.mm(rotMat, trackletBox) + translation.repeat(8, 1).t()
+        cornerPosInVelo = torch.mm(rotMat, trackletBox)
+        cornerPosInVelo += translation.repeat(8, 1)
         box3d = cornerPosInVelo.transpose(0,1)
         ret[i] = box3d
 
