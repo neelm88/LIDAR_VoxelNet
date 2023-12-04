@@ -92,6 +92,32 @@ def load_calib(calib_dir):
     R_cam_to_rect = R_cam_to_rect.astype('float32')
     return P, Tr_velo_to_cam, R_cam_to_rect
 
+def load_kitti_calib(calib_file):
+    """
+    load projection matrix
+    """
+    with open(calib_file) as fi:
+        lines = fi.readlines()
+        assert (len(lines) == 8)
+
+    obj = lines[0].strip().split(' ')[1:]
+    P0 = np.array(obj, dtype=np.float32)
+    obj = lines[1].strip().split(' ')[1:]
+    P1 = np.array(obj, dtype=np.float32)
+    obj = lines[2].strip().split(' ')[1:]
+    P2 = np.array(obj, dtype=np.float32)
+    obj = lines[3].strip().split(' ')[1:]
+    P3 = np.array(obj, dtype=np.float32)
+    obj = lines[4].strip().split(' ')[1:]
+    R0 = np.array(obj, dtype=np.float32)
+    obj = lines[5].strip().split(' ')[1:]
+    Tr_velo_to_cam = np.array(obj, dtype=np.float32)
+    obj = lines[6].strip().split(' ')[1:]
+    Tr_imu_to_velo = np.array(obj, dtype=np.float32)
+
+    return {'P2': P2.reshape(3, 4),
+            'R0': R0.reshape(3, 3),
+            'Tr_velo2cam': Tr_velo_to_cam.reshape(3, 4)}
 
 def lidar_to_bird_view(x, y, factor=1):
     # using the cfg.INPUT_XXX
@@ -884,3 +910,71 @@ def cal_box2d_iou(boxes2d, gt_boxes2d, T_VELO_2_CAM=None, R_RECT_0=None):
             output[idx, idy] = cal_iou2d(boxes2d[idx], gt_boxes2d[idy], T_VELO_2_CAM, R_RECT_0)
 
     return output
+
+def box3d_center_to_corner_batch(boxes_center):
+    # (N, 7) -> (N, 8, 3)
+    N = boxes_center.shape[0]
+    ret = torch.zeros((N, 8, 3))
+    if boxes_center.is_cuda:
+        ret = ret.cuda()
+
+    for i in range(N):
+        box = boxes_center[i]
+        translation = box[0:3]
+        size = box[3:6]
+        rotation = [0, 0, box[-1]]
+
+        h, w, l = size[0], size[1], size[2]
+        trackletBox = torch.FloatTensor([  # in velodyne coordinates around zero point and without orientation yet
+            [-l / 2, -l / 2, l / 2, l / 2, -l / 2, -l / 2, l / 2, l / 2], \
+            [w / 2, -w / 2, -w / 2, w / 2, w / 2, -w / 2, -w / 2, w / 2], \
+            [0, 0, 0, 0, h, h, h, h]])
+        if boxes_center.is_cuda:
+            trackletBox = trackletBox.cuda()
+        # re-create 3D bounding box in velodyne coordinate system
+        yaw = rotation[2]
+        rotMat = torch.FloatTensor([
+            [np.cos(yaw), -np.sin(yaw), 0.0],
+            [np.sin(yaw), np.cos(yaw), 0.0],
+            [0.0, 0.0, 1.0]])
+        if boxes_center.is_cuda:
+            rotMat = rotMat.cuda()
+
+        cornerPosInVelo = torch.mm(rotMat, trackletBox) + translation.repeat(8, 1).t()
+        box3d = cornerPosInVelo.transpose(0,1)
+        ret[i] = box3d
+
+    return ret
+
+def box3d_corner_to_top_batch(boxes3d, use_min_rect=True):
+    # [N,8,3] -> [N,4,2] -> [N,8]
+    box3d_top=[]
+
+    num =len(boxes3d)
+    for n in range(num):
+        b   = boxes3d[n]
+        x0 = b[0,0]
+        y0 = b[0,1]
+        x1 = b[1,0]
+        y1 = b[1,1]
+        x2 = b[2,0]
+        y2 = b[2,1]
+        x3 = b[3,0]
+        y3 = b[3,1]
+        box3d_top.append([x0,y0,x1,y1,x2,y2,x3,y3])
+
+    if use_min_rect:
+        box8pts = torch.FloatTensor(np.array(box3d_top))
+        if boxes3d.is_cuda:
+            box8pts = box8pts.cuda()
+        min_rects = torch.zeros((box8pts.shape[0], 4))
+        if boxes3d.is_cuda:
+            min_rects = min_rects.cuda()
+        # calculate minimum rectangle
+        min_rects[:, 0] = torch.min(box8pts[:, [0, 2, 4, 6]], dim=1)[0]
+        min_rects[:, 1] = torch.min(box8pts[:, [1, 3, 5, 7]], dim=1)[0]
+        min_rects[:, 2] = torch.max(box8pts[:, [0, 2, 4, 6]], dim=1)[0]
+        min_rects[:, 3] = torch.max(box8pts[:, [1, 3, 5, 7]], dim=1)[0]
+        return min_rects
+
+    return box3d_top

@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision.io import read_image
 from torchvision.transforms import ToTensor
-from utils.utils import cal_anchors, process_pointcloud, cal_rpn_target
+from utils.utils import cal_anchors, process_pointcloud, cal_rpn_target, load_kitti_calib
 from utils.custom_collate import default_collate
 from aug_data import aug_data
 class KittiDataset(Dataset):
@@ -76,6 +76,8 @@ class KittiDataset(Dataset):
             else:
                 img = read_image(os.path.join(img_dir, f"{int(index):06d}.png"))
                 dic["img"] = ToTensor()(img)
+                calib_dir = os.path.join(self.cfg.DATA_DIR, data_d, "calib")
+                dic["calib"] = load_kitti_calib(os.path.join(calib_dir, f"{int(index):06d}.txt"))
 
             dic["tag"] = f"{int(index):06d}"
 
